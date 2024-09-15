@@ -10,15 +10,22 @@ enum class EBlock;
 enum class EDirection;
 class FastNoiseLite;
 class UProceduralMeshComponent;
+// 前置声明: 主要是为了避免引入不必要的头文件，从而减少编译时间。例如，如果一个类只需要知道另一个类的存在而不需要知道其内部实现细节，就可以只做前置声明。
+// 头文件: 包含了详细的类型定义、函数原型等信息，使得其他源文件可以通过包含这些头文件来使用其中定义的功能。
 
 UCLASS()
 class AChunk : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	// Sets default values for this actor's properties
 	AChunk();
+	UPROPERTY(EditAnywhere, Category="Chunk")
+	int32 Size = 32;
+
+	UPROPERTY(EditAnywhere, Category="Chunk")
+	float Scale = 1.0f;
 
 protected:
 	// Called when the game starts or when spawned
@@ -29,14 +36,78 @@ protected:
 覆盖（override）：当派生类中有一个函数与基类中的虚函数具有相同的签名时，这个函数就覆盖了基类的虚函数。使用 override 关键字可以确保覆盖的是正确的虚函数，并且编译器会在编译时进行检查。
 纯虚函数：可以通过将虚函数声明为 = 0 来创建纯虚函数。纯虚函数没有实际的实现，必须在派生类中提供具体的实现。含有纯虚函数的类通常是抽象类，不能直接实例化。 */
 
-	UPROPERTY(EditAnywhere, Category="Chunk")
-	int32 Size = 32;
-
-	UPROPERTY(EditAnywhere, Category="Chunk")
-	float Scale = 1.0f;
-	
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+private:
+	TObjectPtr<UProceduralMeshComponent> Mesh;
+	TObjectPtr<FastNoiseLite> Noise;
+	// UE4直接使用指针；UE5 使用TObjectPtr
+
+	TArray<EBlock> Blocks;
+
+	TArray<FVector> VertexData;
+	TArray<int32> TriangleData;
+	TArray<FVector2d> UVData;
+	// 点、面、UV
+
+	int VertexCount = 0;
+
+	const double D0 = 0.0;
+	const double D100 = 100.0;
+	const FVector BlockVertexData[8] = {
+		FVector(D0, D0, D0),
+		FVector(D0, D0, D100),
+		FVector(D0, D100, D0),
+		FVector(D0, D100, D100),
+		FVector(D100, D0, D0),
+		FVector(D100, D0, D100),
+		FVector(D100, D100, D0),
+		FVector(D100, D100, D100),
+	};
+
+	const int BlockTriangleData[24] = {
+		0, 1, 2, 3, // Front
+		5, 0, 3, 6, // Right
+		4, 5, 6, 7, // Back
+		1, 4, 7, 2, // Left
+		5, 4, 1, 0, // Up
+		3, 2, 7, 6 // Down
+	};
+
+	void GenerateBlocks();
+	// 根据噪声高度图，生成方块
+
+	void GenerateMesh();
+	// 生成顶点数据
+
+	void ApplyMesh() const;
+	// 将顶点数据与index数据应用到 ProceduralMeshComponent
+	/*
+	 * c++98 特性：当一个成员函数被声明为const时，这个函数承诺不会改变调用它的对象的状态。这对于常量对象特别有用，因为它们只能调用const的成员函数。
+	 * class MyClass {
+	 * public:
+	 * void PrintValue() const;  // 声明为const成员函数
+	 * void SetValue(int value); // 不是const成员函数
+	 * 
+	 * const MyClass constObj;
+	 * constObj.PrintValue();  // 常量对象可以调用const成员函数
+	 * // constObj.SetValue(42);  // 编译错误：不能调用非const成员
+	 */
+
+	bool Check(FVector Position) const;
+	// 是否包含(不)透明方块
+
+	void CreateFace(EDirection Direction, FVector Position);
+	// 将顶点数据添加到index data
+
+	TArray<FVector> GetFaceVertices(EDirection Direction, FVector Position) const;
+	// utility method使用方法：顶点查表
+
+	FVector GetPositionInDirection(EDirection Direction, FVector Position) const;
+	// 指定方向上的相邻位置，用于给位置添加方向向量
+
+	int GetBlockIndex(int X, int Y, int Z) const;
+	// 将3维坐标转换为一维索引
 };

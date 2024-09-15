@@ -4,7 +4,7 @@
 
 enum class EDirection
 {
-	Front, Back, Left, Right, Top, Bottom
+	Front, Right, Back, Left, Up, Down
 };
 
 enum class EBlock
