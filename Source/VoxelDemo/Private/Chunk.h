@@ -22,10 +22,10 @@ public:
 	// Sets default values for this actor's properties
 	AChunk();
 	UPROPERTY(EditAnywhere, Category="Chunk")
-	int32 Size = 32;
+	int Size = 32;
 
 	UPROPERTY(EditAnywhere, Category="Chunk")
-	float Scale = 1.0f;
+	int Scale = 1;
 
 protected:
 	// Called when the game starts or when spawned
@@ -54,17 +54,17 @@ private:
 
 	int VertexCount = 0;
 
-	const double D0 = 0.0;
-	const double D100 = 100.0;
+	const int I0 = 0;
+	const int I100 = 100;
 	const FVector BlockVertexData[8] = {
-		FVector(D0, D0, D0),
-		FVector(D0, D0, D100),
-		FVector(D0, D100, D0),
-		FVector(D0, D100, D100),
-		FVector(D100, D0, D0),
-		FVector(D100, D0, D100),
-		FVector(D100, D100, D0),
-		FVector(D100, D100, D100),
+		FVector(I100, I100, I100),
+		FVector(I100,I0,I100),
+		FVector(I100,I0,I0),
+		FVector(I100,I100,I0),
+		FVector(I0,I0,I100),
+		FVector(I0,I100,I100),
+		FVector(I0,I100,I0),
+		FVector(I0,I0,I0)
 	};
 
 	const int BlockTriangleData[24] = {
@@ -76,16 +76,16 @@ private:
 		3, 2, 7, 6 // Down
 	};
 
-	void GenerateBlocks();
 	// 根据噪声高度图，生成方块
+	void GenerateBlocks();
 
-	void GenerateMesh();
 	// 生成顶点数据
-
+	void GenerateMesh();
+	
+	//将顶点数据与index数据应用到 ProceduralMeshComponent
 	void ApplyMesh() const;
-	// 将顶点数据与index数据应用到 ProceduralMeshComponent
-	/*
-	 * c++98 特性：当一个成员函数被声明为const时，这个函数承诺不会改变调用它的对象的状态。这对于常量对象特别有用，因为它们只能调用const的成员函数。
+	/* c++98 特性：当一个成员函数被声明为const时，这个函数承诺不会改变调用它的对象的状态。这对于常量对象特别有用，因为它们只能调用const的成员函数。
+	 *
 	 * class MyClass {
 	 * public:
 	 * void PrintValue() const;  // 声明为const成员函数
@@ -96,18 +96,19 @@ private:
 	 * // constObj.SetValue(42);  // 编译错误：不能调用非const成员
 	 */
 
+	// 是否包含透明方块
 	bool Check(FVector Position) const;
-	// 是否包含(不)透明方块
-
-	void CreateFace(EDirection Direction, FVector Position);
+	
 	// 将顶点数据添加到index data
-
-	TArray<FVector> GetFaceVertices(EDirection Direction, FVector Position) const;
+	void CreateFace(EDirection Direction, FVector Position);
+	
 	// utility method使用方法：顶点查表
+	TArray<FVector> GetFaceVertices(EDirection Direction, FVector Position) const;
 
-	FVector GetPositionInDirection(EDirection Direction, FVector Position) const;
 	// 指定方向上的相邻位置，用于给位置添加方向向量
-
-	int GetBlockIndex(int X, int Y, int Z) const;
+	FVector GetPositionInDirection(EDirection Direction, FVector Position) const;
+	
 	// 将3维坐标转换为一维索引
+	int GetBlockIndex(int X, int Y, int Z) const;
+	
 };
