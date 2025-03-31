@@ -58,13 +58,13 @@ private:
 	const int I100 = 100;
 	const FVector BlockVertexData[8] = {
 		FVector(I100, I100, I100),
-		FVector(I100,I0,I100),
-		FVector(I100,I0,I0),
-		FVector(I100,I100,I0),
-		FVector(I0,I0,I100),
-		FVector(I0,I100,I100),
-		FVector(I0,I100,I0),
-		FVector(I0,I0,I0)
+		FVector(I100, I0, I100),
+		FVector(I100, I0, I0),
+		FVector(I100, I100, I0),
+		FVector(I0, I0, I100),
+		FVector(I0, I100, I100),
+		FVector(I0, I100, I0),
+		FVector(I0, I0, I0)
 	};
 
 	const int BlockTriangleData[24] = {
@@ -81,7 +81,7 @@ private:
 
 	// 生成顶点数据
 	void GenerateMesh();
-	
+
 	//将顶点数据与index数据应用到 ProceduralMeshComponent
 	void ApplyMesh() const;
 	/* c++98 特性：当一个成员函数被声明为const时，这个函数承诺不会改变调用它的对象的状态。这对于常量对象特别有用，因为它们只能调用const的成员函数。
@@ -98,17 +98,16 @@ private:
 
 	// 是否包含透明方块
 	bool Check(FVector Position) const;
-	
+
 	// 将顶点数据添加到index data
 	void CreateFace(EDirection Direction, FVector Position);
-	
+
 	// utility method使用方法：顶点查表
 	TArray<FVector> GetFaceVertices(EDirection Direction, FVector Position) const;
 
 	// 指定方向上的相邻位置，用于给位置添加方向向量
 	FVector GetPositionInDirection(EDirection Direction, FVector Position) const;
-	
+
 	// 将3维坐标转换为一维索引
 	int GetBlockIndex(int X, int Y, int Z) const;
-	
 };

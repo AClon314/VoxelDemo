@@ -1,17 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-/* Actor_AChunk, Enum_EDirection, F(Struct)_FVector */
 
 #include "Chunk.h"
-
-#include <ThirdParty/hlslcc/hlslcc/src/hlslcc_lib/ir.h>
-
 #include "Enums.h"
 #include "ProceduralMeshComponent.h"
 #include "Voxel/Utils/FastNoiseLite.h"
+#include <ThirdParty/hlslcc/hlslcc/src/hlslcc_lib/ir.h>
 
-// Sets default values
-AChunk::AChunk()
-{
+
+AChunk::AChunk(){
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -31,8 +27,7 @@ AChunk::AChunk()
 }
 
 // Called when the game starts or when spawned
-void AChunk::BeginPlay()
-{
+void AChunk::BeginPlay(){
 	Super::BeginPlay();
 
 	GenerateBlocks();
@@ -40,57 +35,44 @@ void AChunk::BeginPlay()
 	ApplyMesh();
 }
 
-void AChunk::GenerateBlocks()
-{
+void AChunk::GenerateBlocks(){
 	const auto Location = GetActorLocation();
+	Blocks[GetBlockIndex(0, 0, 0)] = EBlock::Stone;
 
-	for (int x = 0; x < Size; x++)
-	{
-		for (int y = 0; y < Size; y++)
-		{
-			// Unreal的默认最小单位是100cm
-			const float Xpos = (x * I100 + Location.X) / I100;
-			const float Ypos = (y * I100 + Location.Y) / I100;
-			// 除法后移，减少精度损失
-
-			float iNoise= Noise->GetNoise(Xpos, Ypos);
-			const int Height = FMath::Clamp(FMath::RoundToInt((Noise->GetNoise(Xpos, Ypos) + 1) * Size / 2), 0, Size);
-			UE_LOG(LogTemp, Log, TEXT("Height(%f,%f):\t%d"), Xpos,Ypos,Height);
-			// clamp是为了防下标越界
-
-			for (int z = 0; z < Height; z++)
-			{
-				Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
-				// hard-coded AWARE!
-			}
-			for (int z = Height; z < Size; z++)
-			{
-				Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
-			}
-		}
-	}
+	// for (int x = 0; x < Size; x++){
+	// 	for (int y = 0; y < Size; y++){
+	// 		// Unreal的默认最小单位是100cm
+	// 		const float Xpos = (x * I100 + Location.X) / I100;
+	// 		const float Ypos = (y * I100 + Location.Y) / I100;
+	// 		// 除法后移，减少精度损失
+	//
+	// 		float iNoise = Noise->GetNoise(Xpos, Ypos);
+	// 		const int Height = FMath::Clamp(FMath::RoundToInt((Noise->GetNoise(Xpos, Ypos) + 1) * Size / 2),
+	// 		                                0, Size);
+	// 		UE_LOG(LogTemp, Log, TEXT("Height(%f,%f):\t%d"), Xpos, Ypos, Height);
+	// 		// clamp是为了防下标越界
+	//
+	// 		for (int z = 0; z < Height; z++){
+	// 			Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
+	// 			// hard-coded AWARE!
+	// 		}
+	//
+	// 		for (int z = Height; z < Size; z++){
+	// 			Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
+	// 		}
+	// 	}
+	// }
 }
 
-void AChunk::GenerateMesh()
-{
-	for (int x = 0; x < Size; x++)
-	{
-		for (int y = 0; y < Size; y++)
-		{
-			for (int z = 0; z < Size; z++)
-			{
-				if (Blocks[GetBlockIndex(x, y, z)] != EBlock::Air)
-				{
+void AChunk::GenerateMesh(){
+	for (int x = 0; x < Size; x++){
+		for (int y = 0; y < Size; y++){
+			for (int z = 0; z < Size; z++){
+				if (Blocks[GetBlockIndex(x, y, z)] > EBlock::Air){
 					const auto Position = FVector(x, y, z);
-					// 下面的顺序需要与EDirection内一一对应
-					for (auto Direction : {
-						     EDirection::Back, EDirection::Down, EDirection::Front, EDirection::Left, EDirection::Right,
-						     EDirection::Up
-					     })
-					{
+					for (EDirection Direction : TEnumRange<EDirection>()){
 						// 如果这个方向的相邻方块为透明，则创建一个面
-						if (Check(GetPositionInDirection(Direction, Position)))
-						{
+						if (Check(GetPositionInDirection(Direction, Position))){
 							CreateFace(Direction, Position * I100);
 						}
 					}
@@ -100,37 +82,46 @@ void AChunk::GenerateMesh()
 	}
 }
 
-void AChunk::ApplyMesh() const
-{
+void AChunk::ApplyMesh() const{
 	Mesh->CreateMeshSection(0, VertexData, TriangleData, TArray<FVector>(), UVData, TArray<FColor>(),
 	                        TArray<FProcMeshTangent>(), false);
+
+	const auto Location = GetActorLocation();
+	for (int i = 0; i < VertexData.Num(); i++){
+		UE_LOG(LogTemp, Log, TEXT("VertexData[%d]:\t%f, %f, %f"), i, VertexData[i].X, VertexData[i].Y, VertexData[i].Z);
+		FString VertexIndexString = FString::Printf(TEXT("%d"), i);
+		DrawDebugString(GetWorld(), VertexData[i] + Location, VertexIndexString, nullptr, FColor::Red, -1, false, 2);
+	}
 }
 
-bool AChunk::Check(const FVector Position) const
-{
-	if (Position.X >= Size || Position.Y >= Size || Position.Z >= Size || Position.X < 0 || Position.Y < 0 || Position.Z
-		< 0)
+bool AChunk::Check(const FVector Position) const{
+	if (Position.X >= Size || Position.Y >= Size || Position.Z >= Size ||
+		Position.X < 0 || Position.Y < 0 || Position.Z < 0){
 		return true; // 位置越界区块，则当透明方块
-	return Blocks[GetBlockIndex(Position.X, Position.Y, Position.Z)] == EBlock::Air;
+	}
+	return Blocks[GetBlockIndex(Position.X, Position.Y, Position.Z)] <= EBlock::Air;
 }
 
-void AChunk::CreateFace(const EDirection Direction, const FVector Position)
-{
-	VertexData.Append(GetFaceVertices(Direction, Position));
+void AChunk::CreateFace(const EDirection Direction, const FVector Position){
+	TArray<FVector> FaceVertices = GetFaceVertices(Direction, Position);
+	VertexData.Append(FaceVertices);
 	UVData.Append({FVector2D(0, 0), FVector2D(1, 0), FVector2D(1, 1), FVector2D(0, 1)}); // 这里的顺序有关系吗 ?!
 	TriangleData.Append({
 		VertexCount + 3, VertexCount + 2, VertexCount, VertexCount + 2, VertexCount + 1, VertexCount
 	}); // 一个四边面，6个顶点
+
 	VertexCount += 4; // 下一次遍历
 }
 
-TArray<FVector> AChunk::GetFaceVertices(EDirection Direction, FVector Position) const
-{
+TArray<FVector> AChunk::GetFaceVertices(EDirection Direction, FVector Position) const{
 	TArray<FVector> Vertices;
 
-	for (int i = 0; i < 4; i++)
-	{
-		Vertices.Add(BlockVertexData[BlockTriangleData[i + static_cast<int>(Direction) * 4]] * Scale + Position);
+	for (int i = 0; i < 4; i++){
+		FVector VertexPos = Position + BlockVertexData[BlockTriangleData[i + static_cast<int>(Direction) * 4]] * Scale;
+		Vertices.Add(VertexPos);
+
+		// FString VertexIndexString = FString::Printf(TEXT("%d"), VertexCount + i);
+		// DrawDebugString(GetWorld(), VertexPos, VertexIndexString, nullptr, FColor::Red, -1, false, 2);
 	}
 	return Vertices;
 }
@@ -147,10 +138,8 @@ TArray<FVector> AChunk::GetFaceVertices(EDirection Direction, FVector Position) 
  * @return 根据方向计算得到的新位置。
  * @exception std::invalid_argument 当方向参数无效时抛出此异常。
  */
-FVector AChunk::GetPositionInDirection(const EDirection Direction, const FVector Position) const
-{
-	switch (Direction)
-	{
+FVector AChunk::GetPositionInDirection(const EDirection Direction, const FVector Position) const{
+	switch (Direction){
 	case EDirection::Front: return Position + FVector(1, 0, 0);
 	case EDirection::Back: return Position + FVector(-1, 0, 0);
 	case EDirection::Left: return Position + FVector(0, -1, 0);
@@ -164,14 +153,12 @@ FVector AChunk::GetPositionInDirection(const EDirection Direction, const FVector
 /**
  * flatten 3d pos to 1d index
  */
-int AChunk::GetBlockIndex(int X, int Y, int Z) const
-{
+int AChunk::GetBlockIndex(int X, int Y, int Z) const{
 	return Z * Size * Size + Y * Size + X;
 }
 
 
 // Called every frame
-void AChunk::Tick(float DeltaTime)
-{
+void AChunk::Tick(float DeltaTime){
 	Super::Tick(DeltaTime);
 }
