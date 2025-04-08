@@ -1,10 +1,9 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Chunk.generated.h"
+
 
 enum class EBlock;
 enum class EDirection;
@@ -27,6 +26,10 @@ public:
 	UPROPERTY(EditAnywhere, Category="Chunk")
 	int Scale = 1;
 
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+	TArray<FVector> VertexData;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -36,10 +39,6 @@ protected:
 覆盖（override）：当派生类中有一个函数与基类中的虚函数具有相同的签名时，这个函数就覆盖了基类的虚函数。使用 override 关键字可以确保覆盖的是正确的虚函数，并且编译器会在编译时进行检查。
 纯虚函数：可以通过将虚函数声明为 = 0 来创建纯虚函数。纯虚函数没有实际的实现，必须在派生类中提供具体的实现。含有纯虚函数的类通常是抽象类，不能直接实例化。 */
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
 private:
 	TObjectPtr<UProceduralMeshComponent> Mesh;
 	TObjectPtr<FastNoiseLite> Noise;
@@ -47,7 +46,6 @@ private:
 
 	TArray<EBlock> Blocks;
 
-	TArray<FVector> VertexData;
 	TArray<int32> TriangleData;
 	TArray<FVector2d> UVData;
 	// 点、面、UV
@@ -73,7 +71,7 @@ private:
 		4, 5, 6, 7, // Back
 		1, 4, 7, 2, // Left
 		5, 4, 1, 0, // Up
-		3, 2, 7, 6 // Down
+		3, 2, 7, 6 // Downs
 	};
 
 	// 根据噪声高度图，生成方块
@@ -110,4 +108,6 @@ private:
 
 	// 将3维坐标转换为一维索引
 	int GetBlockIndex(int X, int Y, int Z) const;
+
+
 };

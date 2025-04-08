@@ -1,13 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-
 #include "Chunk.h"
 #include "Enums.h"
 #include "ProceduralMeshComponent.h"
 #include "Voxel/Utils/FastNoiseLite.h"
-#include <ThirdParty/hlslcc/hlslcc/src/hlslcc_lib/ir.h>
 
 
 AChunk::AChunk(){
+	Tags.Add(FName("Chunk"));
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -85,13 +84,6 @@ void AChunk::GenerateMesh(){
 void AChunk::ApplyMesh() const{
 	Mesh->CreateMeshSection(0, VertexData, TriangleData, TArray<FVector>(), UVData, TArray<FColor>(),
 	                        TArray<FProcMeshTangent>(), false);
-
-	const auto Location = GetActorLocation();
-	for (int i = 0; i < VertexData.Num(); i++){
-		UE_LOG(LogTemp, Log, TEXT("VertexData[%d]:\t%f, %f, %f"), i, VertexData[i].X, VertexData[i].Y, VertexData[i].Z);
-		FString VertexIndexString = FString::Printf(TEXT("%d"), i);
-		DrawDebugString(GetWorld(), VertexData[i] + Location, VertexIndexString, nullptr, FColor::Red, -1, false, 2);
-	}
 }
 
 bool AChunk::Check(const FVector Position) const{
@@ -162,3 +154,6 @@ int AChunk::GetBlockIndex(int X, int Y, int Z) const{
 void AChunk::Tick(float DeltaTime){
 	Super::Tick(DeltaTime);
 }
+
+
+
