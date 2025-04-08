@@ -2,6 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "InputActionValue.h"
 #include "Chunk.generated.h"
 
 
@@ -26,8 +29,23 @@ public:
 	UPROPERTY(EditAnywhere, Category="Chunk")
 	int Scale = 1;
 
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* NextDebugPageAction;
+
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputMappingContext* DebugMappingContext;
+
+	UPROPERTY(EditAnywhere, Category="Input")
+	int32 DebugPageSize = 3;
+
+	UPROPERTY(EditAnywhere, Category="Input")
+	int32 CurrentDebugPage = 0;
+
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent);
+	void UpdateDebugDisplay();
+	void NextDebugPage();
 	TArray<FVector> VertexData;
 
 protected:
@@ -108,6 +126,4 @@ private:
 
 	// 将3维坐标转换为一维索引
 	int GetBlockIndex(int X, int Y, int Z) const;
-
-
 };

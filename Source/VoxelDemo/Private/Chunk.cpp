@@ -1,5 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "Chunk.h"
+
+#include "EnhancedInputComponent.h"
 #include "Enums.h"
 #include "ProceduralMeshComponent.h"
 #include "Voxel/Utils/FastNoiseLite.h"
@@ -32,6 +34,8 @@ void AChunk::BeginPlay(){
 	GenerateBlocks();
 	GenerateMesh();
 	ApplyMesh();
+
+	UpdateDebugDisplay();
 }
 
 void AChunk::GenerateBlocks(){
@@ -155,5 +159,61 @@ void AChunk::Tick(float DeltaTime){
 	Super::Tick(DeltaTime);
 }
 
+void AChunk::UpdateDebugDisplay(){
+	// 清除所有持久调试信息
+	// FlushPersistentDebugLines(GetWorld());
+	FlushDebugStrings(GetWorld());
+	constexpr int32 Multi = 100;
 
+	for (int32 i = 0; i < DebugPageSize; ++i){
+		int32 Index = CurrentDebugPage * DebugPageSize + i;
+		if (Index >= VertexData.Num()){
+			UE_LOG(LogTemp, Error, TEXT("Index is out of bounds"));
+			break;
+		}
 
+		// 垂直向下排列，每个间隔50单位
+		float offset = ((i % 8) - 4) * 2.0f;
+		FVector TextPosition = GetActorLocation() + VertexData[Index] + FVector(offset, offset, offset); //-50.0f * i
+		FString Text = FString::Printf(TEXT("%d"), Index);
+		int32 Face = Index / 3;
+		FColor Color = FColor(
+			FMath::Clamp((Face) * Multi, 0, 255),
+			FMath::Clamp((Face % 2) * Multi, 0, 255),
+			FMath::Clamp((Face / 2 % 2) * Multi, 0, 255)
+		);
+
+		DrawDebugString(
+			GetWorld(),
+			TextPosition,
+			Text,
+			nullptr,
+			Color,
+			-1.0f, // 持续1000秒
+			false,
+			2.0f
+		);
+	}
+	UE_LOG(LogTemp, Log, TEXT("UpdateDebugDisplay: %d"), VertexData.Num());
+}
+
+void AChunk::NextDebugPage(){
+	int32 length = VertexData.Num();
+	int32 MaxPage = FMath::Max(0, (length - 1) / DebugPageSize);
+	CurrentDebugPage++;
+
+	// 循环到第一页
+	if (CurrentDebugPage > MaxPage){
+		CurrentDebugPage = 0;
+	}
+
+	UpdateDebugDisplay();
+	UE_LOG(LogTemp, Log, TEXT("CurrentDebugPage: %d"), CurrentDebugPage);
+}
+
+void AChunk::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent){
+	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	// 你可以通过更改"ETriggerEvent"枚举值，绑定到此处的任意触发器事件
+	Input->BindAction(NextDebugPageAction, ETriggerEvent::Triggered, this, &AChunk::NextDebugPage);
+	UE_LOG(LogTemp, Log, TEXT("SetupPlayerInputComponent"));
+}
