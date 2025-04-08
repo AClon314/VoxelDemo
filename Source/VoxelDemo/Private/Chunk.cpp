@@ -4,7 +4,7 @@
 #include "EnhancedInputComponent.h"
 #include "Enums.h"
 #include "ProceduralMeshComponent.h"
-#include "Voxel/Utils/FastNoiseLite.h"
+#include "FastNoiseLite.h"
 
 
 AChunk::AChunk(){
@@ -42,29 +42,29 @@ void AChunk::GenerateBlocks(){
 	const auto Location = GetActorLocation();
 	Blocks[GetBlockIndex(0, 0, 0)] = EBlock::Stone;
 
-	// for (int x = 0; x < Size; x++){
-	// 	for (int y = 0; y < Size; y++){
-	// 		// Unreal的默认最小单位是100cm
-	// 		const float Xpos = (x * I100 + Location.X) / I100;
-	// 		const float Ypos = (y * I100 + Location.Y) / I100;
-	// 		// 除法后移，减少精度损失
-	//
-	// 		float iNoise = Noise->GetNoise(Xpos, Ypos);
-	// 		const int Height = FMath::Clamp(FMath::RoundToInt((Noise->GetNoise(Xpos, Ypos) + 1) * Size / 2),
-	// 		                                0, Size);
-	// 		UE_LOG(LogTemp, Log, TEXT("Height(%f,%f):\t%d"), Xpos, Ypos, Height);
-	// 		// clamp是为了防下标越界
-	//
-	// 		for (int z = 0; z < Height; z++){
-	// 			Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
-	// 			// hard-coded AWARE!
-	// 		}
-	//
-	// 		for (int z = Height; z < Size; z++){
-	// 			Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
-	// 		}
-	// 	}
-	// }
+	for (int x = 0; x < Size; x++){
+		for (int y = 0; y < Size; y++){
+			// Unreal的默认最小单位是100cm
+			const float Xpos = (x * I100 + Location.X) / I100;
+			const float Ypos = (y * I100 + Location.Y) / I100;
+			// 除法后移，减少精度损失
+
+			float iNoise = Noise->GetNoise(Xpos, Ypos);
+			const int Height = FMath::Clamp(FMath::RoundToInt((Noise->GetNoise(Xpos, Ypos) + 1) * Size / 2),
+			                                0, Size);
+			UE_LOG(LogTemp, Log, TEXT("Height(%f,%f):\t%d"), Xpos, Ypos, Height);
+			// clamp是为了防下标越界
+
+			for (int z = 0; z < Height; z++){
+				Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
+				// hard-coded AWARE!
+			}
+
+			for (int z = Height; z < Size; z++){
+				Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
+			}
+		}
+	}
 }
 
 void AChunk::GenerateMesh(){
@@ -103,6 +103,7 @@ void AChunk::CreateFace(const EDirection Direction, const FVector Position){
 	VertexData.Append(FaceVertices);
 	UVData.Append({FVector2D(0, 0), FVector2D(1, 0), FVector2D(1, 1), FVector2D(0, 1)}); // 这里的顺序有关系吗 ?!
 	TriangleData.Append({
+		// 计算机图形学，三角形顶点的排列顺序决定了面的法线方向。逆时针面朝外（法线正向），顺时针面朝内.
 		VertexCount + 3, VertexCount + 2, VertexCount, VertexCount + 2, VertexCount + 1, VertexCount
 	}); // 一个四边面，6个顶点
 
@@ -163,7 +164,7 @@ void AChunk::UpdateDebugDisplay(){
 	// 清除所有持久调试信息
 	// FlushPersistentDebugLines(GetWorld());
 	FlushDebugStrings(GetWorld());
-	constexpr int32 Multi = 100;
+	constexpr int32 Multi = 120;
 
 	for (int32 i = 0; i < DebugPageSize; ++i){
 		int32 Index = CurrentDebugPage * DebugPageSize + i;
@@ -178,9 +179,9 @@ void AChunk::UpdateDebugDisplay(){
 		FString Text = FString::Printf(TEXT("%d"), Index);
 		int32 Face = Index / 3;
 		FColor Color = FColor(
-			FMath::Clamp((Face) * Multi, 0, 255),
-			FMath::Clamp((Face % 2) * Multi, 0, 255),
-			FMath::Clamp((Face / 2 % 2) * Multi, 0, 255)
+			FMath::Clamp((Face) * Multi + Multi, Multi, 255),
+			FMath::Clamp((Face % 2) * Multi + Multi, Multi, 255),
+			FMath::Clamp((Face / 2 % 2) * Multi + Multi, Multi, 255)
 		);
 
 		DrawDebugString(
@@ -213,7 +214,6 @@ void AChunk::NextDebugPage(){
 
 void AChunk::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent){
 	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-	// 你可以通过更改"ETriggerEvent"枚举值，绑定到此处的任意触发器事件
 	Input->BindAction(NextDebugPageAction, ETriggerEvent::Triggered, this, &AChunk::NextDebugPage);
 	UE_LOG(LogTemp, Log, TEXT("SetupPlayerInputComponent"));
 }
