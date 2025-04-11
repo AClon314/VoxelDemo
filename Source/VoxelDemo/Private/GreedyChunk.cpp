@@ -1,80 +1,72 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "GreedyChunk.h"
-
-#include "Enums.h"
-#include "ProceduralMeshComponent.h"
 #include "FastNoiseLite.h"
 
-// Sets default values
-AGreedyChunk::AGreedyChunk(){
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = false;
-
-	Mesh = CreateDefaultSubobject<UProceduralMeshComponent>("Mesh");
-	Noise = new FastNoiseLite();
-	Noise->SetFrequency(0.03f);
-	Noise->SetNoiseType(FastNoiseLite::NoiseType_Perlin);
-	Noise->SetFractalType(FastNoiseLite::FractalType_FBm);
-
+void AGreedyChunk::Setup(){
 	// Initialize Blocks
-	Blocks.SetNum(Size.X * Size.Y * Size.Z);
-
-	// Mesh Settings
-	Mesh->SetCastShadow(false);
-
-	// Set Mesh as root
-	SetRootComponent(Mesh);
+	Blocks.SetNum(Size * Size * Size);
 }
 
-// Called when the game starts or when spawned
-void AGreedyChunk::BeginPlay(){
-	Super::BeginPlay();
-	GenerateBlocks();
-	GenerateMesh();
-	UE_LOG(LogTemp, Warning, TEXT("Vertex Count : %d"), VertexCount);
-	ApplyMesh();
-}
+void AGreedyChunk::Generate2DHeightMap(const FVector Position){
+	for (int x = 0; x < Size; x++){
+		for (int y = 0; y < Size; y++){
+			const float Xpos = x + Position.X;
+			const float Ypos = y + Position.Y;
 
-void AGreedyChunk::GenerateBlocks(){
-	const auto Location = GetActorLocation();
+			const int Height = FMath::Clamp(FMath::RoundToInt((Noise->GetNoise(Xpos, Ypos) + 1) * Size / 2), 0, Size);
 
-	for (int x = 0; x < Size.X; x++){
-		for (int y = 0; y < Size.Y; y++){
-			const float Xpos = (x * 100 + Location.X) / 100;
-			const float ypos = (y * 100 + Location.Y) / 100;
-
-			const int Height = FMath::Clamp(
-				FMath::RoundToInt((Noise->GetNoise(Xpos, ypos) + 1) * Size.Z / 2),
-				0, Size.Z);
-
-			for (int z = 0; z < Height; z++){
-				Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
-			}
-			for (int z = Height; z < Size.Z; z++){
-				Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
+			for (int z = 0; z < Size; z++){
+				if (z < Height - 3){
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
+				}
+				else if (z < Height - 1){
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Dirt;
+				}
+				else if (z == Height - 1){
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Grass;
+				}
+				else{
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
+				}
 			}
 		}
 	}
 }
 
-void AGreedyChunk::ApplyMesh(){
-	Mesh->CreateMeshSection(
-		0, MeshData.Vertices, MeshData.Triangles, MeshData.Normals, MeshData.UV0,
-		TArray<FColor>(), TArray<FProcMeshTangent>(), false);
+void AGreedyChunk::Generate3DHeightMap(const FVector Position){
+	for (int x = 0; x < Size; ++x){
+		for (int y = 0; y < Size; ++y){
+			for (int z = 0; z < Size; ++z){
+				const auto NoiseValue = Noise->GetNoise(x + Position.X, y + Position.Y, z + Position.Z);
+
+				if (NoiseValue >= 0){
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Air;
+				}
+				else if (NoiseValue < -0.3f){
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Stone;
+				}
+				else if (NoiseValue < -0.6f){
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Dirt;
+				}
+				else{
+					Blocks[GetBlockIndex(x, y, z)] = EBlock::Grass;
+				}
+			}
+		}
+	}
 }
 
 void AGreedyChunk::GenerateMesh(){
 	// Sweep over each axis (X, Y, Z)
 	for (int Axis = 0; Axis < 3; ++Axis){
-		// 2 Perpendicular axis, cycle current axis through (x,y,z)
+		// 2 Perpendicular axis
 		const int Axis1 = (Axis + 1) % 3;
 		const int Axis2 = (Axis + 2) % 3;
 
-		const int MainAxisLimit = Size[Axis];
-		int Axis1Limit = Size[Axis1];
-		int Axis2Limit = Size[Axis2];
+		const int MainAxisLimit = Size;
+		const int Axis1Limit = Size;
+		const int Axis2Limit = Size;
 
 		auto DeltaAxis1 = FIntVector::ZeroValue;
 		auto DeltaAxis2 = FIntVector::ZeroValue;
@@ -85,9 +77,9 @@ void AGreedyChunk::GenerateMesh(){
 		AxisMask[Axis] = 1;
 
 		TArray<FMask> Mask;
-		Mask.SetNum(Axis1Limit * Axis2Limit); // 2D Map
+		Mask.SetNum(Axis1Limit * Axis2Limit);
 
-		// 2D Map, Check each slice of the chunk, -1 is because 1 chunk(block) has 2 faces(slices), max = `chunk.Num()-1`
+		// Check each slice of the chunk
 		for (ChunkItr[Axis] = -1; ChunkItr[Axis] < MainAxisLimit;){
 			int N = 0;
 
@@ -96,27 +88,23 @@ void AGreedyChunk::GenerateMesh(){
 				for (ChunkItr[Axis1] = 0; ChunkItr[Axis1] < Axis1Limit; ++ChunkItr[Axis1]){
 					const auto CurrentBlock = GetBlock(ChunkItr);
 					const auto CompareBlock = GetBlock(ChunkItr + AxisMask);
-					// AxisMask: if yz surface, then AxisMask = (1, 0, 0) to get x axis
 
 					const bool CurrentBlockOpaque = CurrentBlock != EBlock::Air;
 					const bool CompareBlockOpaque = CompareBlock != EBlock::Air;
 
 					if (CurrentBlockOpaque == CompareBlockOpaque){
-						// Both blocks are opaque or both are air, skip
 						Mask[N++] = FMask{EBlock::Null, 0};
 					}
 					else if (CurrentBlockOpaque){
-						// the next block is air, so we need to add a face towards the air
 						Mask[N++] = FMask{CurrentBlock, 1};
 					}
 					else{
-						// the next block isn't air, add a face towards the block
 						Mask[N++] = FMask{CompareBlock, -1};
 					}
 				}
 			}
 
-			++ChunkItr[Axis]; // move current slice to the next one
+			++ChunkItr[Axis];
 			N = 0;
 
 			// Generate Mesh From Mask
@@ -127,13 +115,14 @@ void AGreedyChunk::GenerateMesh(){
 						ChunkItr[Axis1] = i;
 						ChunkItr[Axis2] = j;
 
-						// expanding the quad
 						int Width;
+
 						for (Width = 1; i + Width < Axis1Limit && CompareMask(Mask[N + Width], CurrentMask); ++Width){
 						}
 
 						int Height;
 						bool Done = false;
+
 						for (Height = 1; j + Height < Axis2Limit; ++Height){
 							for (int k = 0; k < Width; ++k){
 								if (CompareMask(Mask[N + k + Height * Axis1Limit], CurrentMask)){
@@ -152,10 +141,8 @@ void AGreedyChunk::GenerateMesh(){
 						DeltaAxis1[Axis1] = Width;
 						DeltaAxis2[Axis2] = Height;
 
-						// AxisMask: if (1,0,0), then create on yz surface
-						// Given 4 porints to create quad: ChunkItr=BaseLocation, DeltaAxis...=offset
 						CreateQuad(
-							CurrentMask, AxisMask,
+							CurrentMask, AxisMask, Width, Height,
 							ChunkItr,
 							ChunkItr + DeltaAxis1,
 							ChunkItr + DeltaAxis2,
@@ -165,10 +152,9 @@ void AGreedyChunk::GenerateMesh(){
 						DeltaAxis1 = FIntVector::ZeroValue;
 						DeltaAxis2 = FIntVector::ZeroValue;
 
-						for (int y = 0; y < Height; ++y){
-							for (int z = 0; z < Width; ++z){
-								// clear the mask of current quad, prevent next iteration of i,j from creating a quad
-								Mask[N + z + y * Axis1Limit] = FMask{EBlock::Null, 0};
+						for (int l = 0; l < Height; ++l){
+							for (int k = 0; k < Width; ++k){
+								Mask[N + k + l * Axis1Limit] = FMask{EBlock::Null, 0};
 							}
 						}
 
@@ -176,8 +162,8 @@ void AGreedyChunk::GenerateMesh(){
 						N += Width;
 					}
 					else{
-						i++; // y index of yz surface
-						N++; // mask index
+						i++;
+						N++;
 					}
 				}
 			}
@@ -185,41 +171,82 @@ void AGreedyChunk::GenerateMesh(){
 	}
 }
 
-void AGreedyChunk::CreateQuad(FMask Mask, FIntVector AxisMask, FIntVector V1, FIntVector V2, FIntVector V3,
-                              FIntVector V4){
+void AGreedyChunk::CreateQuad(
+	const FMask Mask,
+	const FIntVector AxisMask,
+	const int Width,
+	const int Height,
+	const FIntVector V1,
+	const FIntVector V2,
+	const FIntVector V3,
+	const FIntVector V4
+){
 	const auto Normal = FVector(AxisMask * Mask.Normal);
+	const auto Color = FColor(0, 0, 0, GetTextureIndex(Mask.Block, Normal));
 
-	MeshData.Vertices.Add(FVector(V1) * 100);
-	MeshData.Vertices.Add(FVector(V2) * 100);
-	MeshData.Vertices.Add(FVector(V3) * 100);
-	MeshData.Vertices.Add(FVector(V4) * 100);
+	MeshData.Vertices.Append({
+		FVector(V1) * 100,
+		FVector(V2) * 100,
+		FVector(V3) * 100,
+		FVector(V4) * 100
+	});
 
-	MeshData.Triangles.Add(VertexCount);
-	MeshData.Triangles.Add(VertexCount + 2 + Mask.Normal);
-	MeshData.Triangles.Add(VertexCount + 2 - Mask.Normal);
-	MeshData.Triangles.Add(VertexCount + 3);
-	MeshData.Triangles.Add(VertexCount + 1 - Mask.Normal);
-	MeshData.Triangles.Add(VertexCount + 1 + Mask.Normal);
+	MeshData.Triangles.Append({
+		VertexCount,
+		VertexCount + 2 + Mask.Normal,
+		VertexCount + 2 - Mask.Normal,
+		VertexCount + 3,
+		VertexCount + 1 - Mask.Normal,
+		VertexCount + 1 + Mask.Normal
+	});
 
-	MeshData.UV0.Add(FVector2D(0, 0));
-	MeshData.UV0.Add(FVector2D(0, 1));
-	MeshData.UV0.Add(FVector2D(1, 0));
-	MeshData.UV0.Add(FVector2D(1, 1));
+	MeshData.Normals.Append({
+		Normal,
+		Normal,
+		Normal,
+		Normal
+	});
 
-	MeshData.Normals.Add(Normal);
-	MeshData.Normals.Add(Normal);
-	MeshData.Normals.Add(Normal);
-	MeshData.Normals.Add(Normal);
+	MeshData.Colors.Append({
+		Color,
+		Color,
+		Color,
+		Color
+	});
+
+	if (Normal.X == 1 || Normal.X == -1){
+		MeshData.UV0.Append({
+			//?
+			FVector2D(Width, Height),
+			FVector2D(0, Height),
+			FVector2D(Width, 0),
+			FVector2D(0, 0),
+		});
+	}
+	else{
+		MeshData.UV0.Append({
+			FVector2D(Height, Width),
+			FVector2D(Height, 0),
+			FVector2D(0, Width),
+			FVector2D(0, 0),
+		});
+	}
 
 	VertexCount += 4;
 }
 
+void AGreedyChunk::ModifyVoxelData(const FIntVector Position, const EBlock Block){
+	const int Index = GetBlockIndex(Position.X, Position.Y, Position.Z);
+
+	Blocks[Index] = Block;
+}
+
 int AGreedyChunk::GetBlockIndex(const int X, const int Y, const int Z) const{
-	return Z * Size.X * Size.Y + Y * Size.X + X;
+	return Z * Size * Size + Y * Size + X;
 }
 
 EBlock AGreedyChunk::GetBlock(const FIntVector Index) const{
-	if (Index.X >= Size.X || Index.Y >= Size.Y || Index.Z >= Size.Z || Index.X < 0 || Index.Y < 0 || Index.Z < 0){
+	if (Index.X >= Size || Index.Y >= Size || Index.Z >= Size || Index.X < 0 || Index.Y < 0 || Index.Z < 0){
 		return EBlock::Air;
 	}
 	return Blocks[GetBlockIndex(Index.X, Index.Y, Index.Z)];
@@ -227,4 +254,19 @@ EBlock AGreedyChunk::GetBlock(const FIntVector Index) const{
 
 bool AGreedyChunk::CompareMask(const FMask M1, const FMask M2) const{
 	return M1.Block == M2.Block && M1.Normal == M2.Normal;
+}
+
+int AGreedyChunk::GetTextureIndex(const EBlock Block, const FVector Normal) const{
+	switch (Block){
+	case EBlock::Grass:
+		{
+			if (Normal == FVector::UpVector){
+				return 0;
+			}
+			return 1;
+		}
+	case EBlock::Dirt: return 2;
+	case EBlock::Stone: return 3;
+	default: return 255;
+	}
 }

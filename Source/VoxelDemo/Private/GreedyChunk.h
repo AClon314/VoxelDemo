@@ -4,17 +4,15 @@
 
 #include "CoreMinimal.h"
 
-#include "ChunkMeshData.h"
-#include "GameFramework/Actor.h"
+#include "ChunkBase.h"
+#include "Enums.h"
 #include "GreedyChunk.generated.h"
 
-enum class EBlock;
-enum class EDirection;
 class FastNoiseLite;
 class UProceduralMeshComponent;
 
 UCLASS()
-class AGreedyChunk : public AActor
+class AGreedyChunk final : public AChunkBase
 {
 	GENERATED_BODY()
 
@@ -24,37 +22,20 @@ class AGreedyChunk : public AActor
 		int Normal;
 	};
 
-public:
-	// Sets default values for this actor's properties
-	AGreedyChunk();
-
-	UPROPERTY(EditAnywhere, Category="Chunk")
-	FIntVector Size = FIntVector(1, 1, 1) * 32;
-
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	virtual void Setup() override;
+	virtual void Generate2DHeightMap(FVector Position) override;
+	virtual void Generate3DHeightMap(FVector Position) override;
+	virtual void GenerateMesh() override;
+	virtual void ModifyVoxelData(const FIntVector Position, const EBlock Block) override;
 
 private:
-	TObjectPtr<UProceduralMeshComponent> Mesh;
-	TObjectPtr<FastNoiseLite> Noise;
-
-	FChunkMeshData MeshData;
 	TArray<EBlock> Blocks;
 
-	int VertexCount = 0;
-
-	void GenerateBlocks();
-
-	void ApplyMesh();
-
-	void GenerateMesh();
-
-	void CreateQuad(FMask Mask, FIntVector AxisMask, FIntVector Width, FIntVector Height, FIntVector V3, FIntVector V4);
-
+	void CreateQuad(FMask Mask, FIntVector AxisMask, int Width, int Height,
+	                FIntVector V1, FIntVector V2, FIntVector V3, FIntVector V4);
 	int GetBlockIndex(int X, int Y, int Z) const;
-
 	EBlock GetBlock(FIntVector Index) const;
-
 	bool CompareMask(FMask M1, FMask M2) const;
+	int GetTextureIndex(EBlock Block, FVector Normal) const;
 };

@@ -4,22 +4,34 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Enums.h"
 #include "ChunkWorld.generated.h"
 
+class AChunkBase;
+
 UCLASS()
-class AChunkWorld : public AActor
+class AChunkWorld final : public AActor
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category="Chunk World")
-	TSubclassOf<AActor> Chunk;
+	UPROPERTY(EditInstanceOnly, Category="World")
+	TSubclassOf<AChunkBase> ChunkType;
 
-	UPROPERTY(EditAnywhere, Category="Chunk World")
-	int DrawDistance = 5;
+	UPROPERTY(EditInstanceOnly, Category="World")
+	int DrawDistance = 3;
 
-	UPROPERTY(EditAnywhere, Category="Chunk World")
-	int ChunkSize = 32;
+	UPROPERTY(EditInstanceOnly, Category="Chunk")
+	TObjectPtr<UMaterialInterface> Material;
+
+	UPROPERTY(EditInstanceOnly, Category="Chunk")
+	int Size = 32;
+
+	UPROPERTY(EditInstanceOnly, Category="Height Map")
+	EGenerationType GenerationType;
+
+	UPROPERTY(EditInstanceOnly, Category="Height Map")
+	float Frequency = 0.03f;
 
 	// Sets default values for this actor's properties
 	AChunkWorld();
@@ -27,5 +39,10 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
+
+private:
+	int ChunkCount;
+
+	void Generate3DWorld();
+	void Generate2DWorld();
 };
