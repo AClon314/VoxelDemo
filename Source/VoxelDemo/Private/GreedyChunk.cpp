@@ -72,7 +72,7 @@ void AGreedyChunk::GenerateMesh(){
 		auto DeltaAxis2 = FIntVector::ZeroValue;
 
 		auto ChunkItr = FIntVector::ZeroValue;
-		auto AxisMask = FIntVector::ZeroValue;
+		auto AxisMask = FIntVector::ZeroValue; // (1,0,0) or (0,1,0) or (0,0,1)
 
 		AxisMask[Axis] = 1;
 
@@ -185,10 +185,7 @@ void AGreedyChunk::CreateQuad(
 	const auto Color = FColor(0, 0, 0, GetTextureIndex(Mask.Block, Normal));
 
 	MeshData.Vertices.Append({
-		FVector(V1) * 100,
-		FVector(V2) * 100,
-		FVector(V3) * 100,
-		FVector(V4) * 100
+		FVector(V1) * 100, FVector(V2) * 100, FVector(V3) * 100, FVector(V4) * 100
 	});
 
 	MeshData.Triangles.Append({
@@ -201,22 +198,15 @@ void AGreedyChunk::CreateQuad(
 	});
 
 	MeshData.Normals.Append({
-		Normal,
-		Normal,
-		Normal,
-		Normal
+		Normal, Normal, Normal, Normal
 	});
 
 	MeshData.Colors.Append({
-		Color,
-		Color,
-		Color,
-		Color
+		Color, Color, Color, Color
 	});
 
 	if (Normal.X == 1 || Normal.X == -1){
 		MeshData.UV0.Append({
-			//?
 			FVector2D(Width, Height),
 			FVector2D(0, Height),
 			FVector2D(Width, 0),
@@ -262,6 +252,9 @@ int AGreedyChunk::GetTextureIndex(const EBlock Block, const FVector Normal) cons
 		{
 			if (Normal == FVector::UpVector){
 				return 0;
+			}
+			if (Normal == FVector::DownVector){
+				return 2;
 			}
 			return 1;
 		}

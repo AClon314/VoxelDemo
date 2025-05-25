@@ -1,14 +1,8 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
-
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelFunctionLib.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class UVoxelFunctionLib final : public UBlueprintFunctionLibrary
 {
@@ -22,4 +16,5 @@ class UVoxelFunctionLib final : public UBlueprintFunctionLibrary
 
 	UFUNCTION(BlueprintPure, Category="Voxel")
 	static FIntVector WorldToChunkPosition(const FVector& Position, const int Size);
+	static FIntVector GetMatrixData(const FIntVector& Position, int Size);
 };

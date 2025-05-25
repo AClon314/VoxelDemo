@@ -12,7 +12,7 @@ FIntVector UVoxelFunctionLib::WorldToLocalBlockPosition(const FVector& Position,
 
 	auto Result = WorldToBlockPosition(Position) - ChunkPos * Size;
 
-	// Negative Normalization
+	// Negative Normalization: 2/32 == 0, but -2/32 == 0 pointed to the same chunk, so we need offset -1 to the negative side
 	if (ChunkPos.X < 0){
 		Result.X--;
 	}
@@ -39,6 +39,7 @@ FIntVector UVoxelFunctionLib::WorldToChunkPosition(const FVector& Position, cons
 		Result.X = static_cast<int>(Position.X / Factor);
 	}
 
+
 	if (IntPosition.Y < 0){
 		Result.Y = static_cast<int>(Position.Y / Factor) - 1;
 	}
@@ -51,6 +52,26 @@ FIntVector UVoxelFunctionLib::WorldToChunkPosition(const FVector& Position, cons
 	}
 	else{
 		Result.Z = static_cast<int>(Position.Z / Factor);
+	}
+
+	return Result;
+}
+
+FIntVector UVoxelFunctionLib::GetMatrixData(const FIntVector& Position, const int Size){
+	FIntVector Result;
+
+	Result.X = Position.X % Size;
+	Result.Y = Position.Y % Size;
+	Result.Z = Position.Z % Size;
+
+	if (Result.X < 0){
+		Result.X += Size;
+	}
+	if (Result.Y < 0){
+		Result.Y += Size;
+	}
+	if (Result.Z < 0){
+		Result.Z += Size;
 	}
 
 	return Result;

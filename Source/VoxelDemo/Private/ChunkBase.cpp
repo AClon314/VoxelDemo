@@ -62,6 +62,7 @@ void AChunkBase::ApplyMesh() const{
 		TArray<FProcMeshTangent>(),
 		true
 	);
+	UE_LOG(LogTemp, Warning, TEXT("Mesh Applied: %d triangles"), MeshData.Triangles.Num());
 }
 
 void AChunkBase::ClearMesh(){

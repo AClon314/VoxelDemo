@@ -18,13 +18,13 @@ public:
 	UPROPERTY(EditInstanceOnly, Category="World")
 	TSubclassOf<AChunkBase> ChunkType;
 
-	UPROPERTY(EditInstanceOnly, Category="World")
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="World")
 	int DrawDistance = 3;
 
 	UPROPERTY(EditInstanceOnly, Category="Chunk")
 	TObjectPtr<UMaterialInterface> Material;
 
-	UPROPERTY(EditInstanceOnly, Category="Chunk")
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Chunk")
 	int Size = 32;
 
 	UPROPERTY(EditInstanceOnly, Category="Height Map")
